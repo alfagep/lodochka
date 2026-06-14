@@ -34,23 +34,31 @@
   /* ── narrative line ── */
   #line{
     position:absolute;left:0;right:0;
-    top:13%; height:45%;                 /* зона текста: от ~13% до ~58% (над перекладиной) */
-    display:flex;align-items:center;justify-content:center;
+    top:18%; height:40%;                 /* зона текста над перекладиной; верх закреплён */
+    display:flex;align-items:flex-start;justify-content:center;
     text-align:center;padding:0 8%;
     font-family:'Figtree',sans-serif;
-    font-size:28px;line-height:1.4;font-weight:500;
+    font-size:28px;line-height:1.5;font-weight:500;
     color:var(--ink);opacity:0;transition:opacity 1.1s ease;
     pointer-events:none;text-shadow:0 1px 0 rgba(255,255,255,.45);
   }
   #line.show{opacity:1}
   #line i{font-style:italic}
+  #line.small{font-size:21px;line-height:1.6}      /* второй экран — мельче, влезает в одну колонку */
+  #line.small i{font-style:normal}                 /* без курсива */
 
   #hint{
     position:absolute;left:0;right:0;bottom:6%;text-align:center;
     font-size:12px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--ink-soft);opacity:0;transition:opacity 1s ease;pointer-events:none;
+    transform-origin:center;
   }
   #hint.show{opacity:.85}
+  #hint.breathe{animation:hintBreathe 2.4s ease-in-out infinite}
+  @keyframes hintBreathe{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(2)}
+  }
 
   /* ── buttons ── */
   .btn{
@@ -122,7 +130,7 @@
   <canvas id="cv"></canvas>
 
   <div id="line"></div>
-  <div id="hint">коснись в ритме движения</div>
+  <div id="hint">раскачай лодочку</div>
   <button class="btn" id="exitBtn">Выйти из лодочки</button>
 
   <!-- reveal -->
@@ -195,30 +203,59 @@ const HOLD=1.0;
 /* ───────────────── narrative ───────────────── */
 const lineEl=document.getElementById('line'),hintEl=document.getElementById('hint');
 let lineTimer=null, lineSwap=null;
-function showLine(html,hold){
-  lineEl.innerHTML=html; lineEl.classList.add('show');
+function showLine(html,hold,small){
+  lineEl.innerHTML=html;
+  lineEl.classList.toggle('small', !!small);
+  lineEl.classList.add('show');
   clearTimeout(lineTimer);
   lineTimer=setTimeout(()=>lineEl.classList.remove('show'),hold);
 }
-function say(html,hold=4200){
+function say(html,hold=4200,small){
   clearTimeout(lineSwap);
   if(lineEl.classList.contains('show')){
     // уже что-то показано — сперва убираем его, новую фразу показываем после ухода (без наложения)
     lineEl.classList.remove('show');
     clearTimeout(lineTimer);
-    lineSwap=setTimeout(()=>showLine(html,hold),1150);   // дождаться конца fade (1.1s)
+    lineSwap=setTimeout(()=>showLine(html,hold,small),1150);   // дождаться конца fade (1.1s)
   } else {
-    showLine(html,hold);
+    showLine(html,hold,small);
   }
 }
-setTimeout(()=>say('Жаркий день. Ветра нет.<br>Старая лодочка ждёт.',3800),700);
-setTimeout(()=>{ if(S.taps===0){ say('Качай. <i>Не силой – ритмом.</i>',4200); hintEl.classList.add('show');} },4900);
+// ── Вступление: три строки накапливаются столбиком (пауза 2с), стоят втроём ──
+const introLines=['Жаркий день.','Ветра нет.','Лодочка ждёт, когда ты её качнёшь.'];
+function runIntro(){
+  if(S.taps>0) return;
+  let acc='';
+  introLines.forEach((ln,i)=>{
+    setTimeout(()=>{
+      if(S.taps>0) return;
+      acc += (acc?'<br>':'') + ln;
+      showLine(acc, 99999);            // держим, пока не сменим вручную
+    }, 700 + i*2000);
+  });
+  // после третьей строки вступления держим ~2.5с, затем второй экран — тремя тактами по 3с
+  const t2 = 700 + 3*2000 + 2500;        // старт второго экрана
+  setTimeout(()=>{ if(S.taps===0) say('Играй с ритмом.', 99999, true); }, t2);
+  setTimeout(()=>{ if(S.taps===0) showLine('Играй с ритмом.<br>Одна сила не поможет', 99999, true); }, t2+3000);
+  setTimeout(()=>{ if(S.taps===0) showLine('Играй с ритмом.<br>Одна сила не поможет<br>раскачать лодочку.', 99999, true); }, t2+6000);
+  // все три строки висят ~5с, затем уходят
+  setTimeout(()=>{ if(S.taps===0) lineEl.classList.remove('show'); }, t2+6000+5000);
+  // затем подсказка внизу
+  setTimeout(()=>{
+    if(S.taps===0){
+      hintEl.classList.add('show');
+      // если 2с без касания — подсказка начинает дышать (растёт вдвое и обратно, циклом)
+      setTimeout(()=>{ if(S.taps===0) hintEl.classList.add('breathe'); }, 2000);
+    }
+  }, t2+6000+5000+1400);
+}
+runIntro();
 
 /* ───────────────── input: pumping ───────────────── */
 const ripples=[];
 function pump(x,y){
   if(S.phase!=='swing')return;
-  S.taps++; hintEl.classList.remove('show');
+  S.taps++; hintEl.classList.remove('show'); hintEl.classList.remove('breathe');
   const a=Math.abs(S.th), Aref=Math.max(S.A,0.12);
   if(Math.abs(S.om)<0.018 && a<0.05){          // first nudges from stillness
     S.om += (S.taps%2? .034 : -.034);
