@@ -63,7 +63,7 @@
   }
   .btn:active{transform:scale(.97)}
   #exitBtn{
-    position:absolute;left:50%;transform:translateX(-50%);bottom:5.5%;
+    position:absolute;left:50%;transform:translateX(-50%);bottom:2%;
     opacity:0;pointer-events:none;
   }
   #exitBtn.show{opacity:1;pointer-events:auto}
@@ -129,14 +129,14 @@
   <div class="panel" id="revealPanel">
     <h2>Это была не просто лодочка</h2>
     <p class="display">То, что ты сейчас делал руками,<br>твоё понимание делает каждый день.</p>
-    <p>Между двумя полюсами — <b>непониманием</b> и <b>результатом</b> — качается живой процесс. Большая амплитуда вырастает не из силы, а из уважения к мизерным откликам.</p>
+    <p>Между двумя полюсами – <b>непониманием</b> и <b>результатом</b> – качается живой процесс. Большая амплитуда вырастает не из силы, а из уважения к мизерным откликам.</p>
     <button class="btn" id="toPonema">Дальше</button>
   </div>
 
   <!-- ponema -->
   <div class="panel" id="ponemaPanel">
     <h2>Первая пометка</h2>
-    <p>Что сейчас с твоим пониманием — самой лодочки?<br>Здесь нет правильного ответа. Судья — ты.</p>
+    <p>Что сейчас с твоим пониманием – самой лодочки?<br>Здесь нет правильного ответа. Судья – ты.</p>
     <div id="choices">
       <button class="choice" data-v="0"><small>понема I</small>Что-то есть, но не складывается</button>
       <button class="choice" data-v="1"><small>понема II</small>Появился доступ</button>
@@ -152,7 +152,7 @@
     <p id="cloudCoda">Это был первый такт.<br>Завтра лодочка качнётся выше.</p>
   </div>
 
-  <div id="footerTag">Лодочка понимания · прототип · AlfaGravity — 20 лет полёта</div>
+  <div id="footerTag">Лодочка понимания · прототип · AlfaGravity – 20 лет полёта</div>
 </div>
 
 <script>
@@ -194,14 +194,25 @@ const HOLD=1.0;
 
 /* ───────────────── narrative ───────────────── */
 const lineEl=document.getElementById('line'),hintEl=document.getElementById('hint');
-let lineTimer=null;
-function say(html,hold=4200){
+let lineTimer=null, lineSwap=null;
+function showLine(html,hold){
   lineEl.innerHTML=html; lineEl.classList.add('show');
   clearTimeout(lineTimer);
   lineTimer=setTimeout(()=>lineEl.classList.remove('show'),hold);
 }
+function say(html,hold=4200){
+  clearTimeout(lineSwap);
+  if(lineEl.classList.contains('show')){
+    // уже что-то показано — сперва убираем его, новую фразу показываем после ухода (без наложения)
+    lineEl.classList.remove('show');
+    clearTimeout(lineTimer);
+    lineSwap=setTimeout(()=>showLine(html,hold),1150);   // дождаться конца fade (1.1s)
+  } else {
+    showLine(html,hold);
+  }
+}
 setTimeout(()=>say('Жаркий день. Ветра нет.<br>Старая лодочка ждёт.',3800),700);
-setTimeout(()=>{ if(S.taps===0){ say('Качай. <i>Не силой — ритмом.</i>',4200); hintEl.classList.add('show');} },4900);
+setTimeout(()=>{ if(S.taps===0){ say('Качай. <i>Не силой – ритмом.</i>',4200); hintEl.classList.add('show');} },4900);
 
 /* ───────────────── input: pumping ───────────────── */
 const ripples=[];
@@ -233,10 +244,10 @@ phone.addEventListener('pointerdown',e=>{
 const exitBtn=document.getElementById('exitBtn');
 function checkMilestones(){
   const M=S.milestones;
-  if(!M.m1 && S.A>0.04){M.m1=true; say('Лодочка отвечает.<br>Едва заметно — но отвечает.');}
+  if(!M.m1 && S.A>0.04){M.m1=true; say('Лодочка отвечает.<br>Едва заметно – но отвечает.');}
   if(!M.m2 && S.A>0.40){M.m2=true; say('Появился ветер.<br><i>Это твоё движение его родило.</i>');}
   if(!M.m3 && S.A>0.85){M.m3=true; say('Чувствуешь замирание вверху?<br>У качания есть полюса.',5200);}
-  if(!M.m4 && S.A>1.30){M.m4=true; say('Дальше — не сильнее.<br><i>Дальше — удержи.</i>',5200);}
+  if(!M.m4 && S.A>1.30){M.m4=true; say('Дальше – не сильнее.<br><i>Дальше – удержи.</i>',5200);}
   if(S.A>0.70) S.sustain+=1/60; 
   if(!M.exit && S.sustain>5.5){M.exit=true; exitBtn.classList.add('show');}
 }
@@ -258,10 +269,10 @@ document.getElementById('toPonema').addEventListener('click',()=>{
   setTimeout(()=>panels.ponema.classList.add('show'),350);
 });
 const CLOUD_COPY=[
- {t:'Не складывается',  d:'Это не ошибка. Это вход в цикл —<br>суть уже проявляется там,<br>где смысл ещё не сложился.'},
+ {t:'Не складывается',  d:'Это не ошибка. Это вход в цикл –<br>суть уже проявляется там,<br>где смысл ещё не сложился.'},
  {t:'Появился доступ',  d:'Содержание приоткрылось.<br>Теперь есть с чем идти дальше.'},
  {t:'Суть проявляется', d:'Видно, <i>как именно</i> складывается.<br>Это и есть живое движение понимания.'},
- {t:'Оставило след',    d:'Понятое вошло в жизнь.<br>Цикл завершён — и готов начаться выше.'},
+ {t:'Оставило след',    d:'Понятое вошло в жизнь.<br>Цикл завершён – и готов начаться выше.'},
 ];
 document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>{
   S.cloudVariant=+b.dataset.v; S.cloudT=0;
