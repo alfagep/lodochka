@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Лодочка понимания · прототип первой минуты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#cfe7f3; --sky-warm:#f6ecd8;
+    --leaf-dark:#3f5d3a; --leaf-light:#7da06b;
+    --wood:#8a5a33; --metal:#4a4642;
+    --acacia:#fff3c9; --sun:#ffd98a;
+    --ink:#322e29; --ink-soft:rgba(50,46,41,.72);
+    --card:#fbf6ea;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;}
+  body{
+    background:#2e2a25;
+    font-family:'Inter',-apple-system,system-ui,sans-serif;
+    color:var(--ink);
+    display:flex;justify-content:center;align-items:stretch;
+    overflow:hidden;
+  }
+  #phone{
+    position:relative;width:100%;max-width:480px;height:100dvh;
+    overflow:hidden;background:var(--sky-top);
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  }
+  canvas{display:block;width:100%;height:100%}
+
+  /* ── narrative line ── */
+  #line{
+    position:absolute;left:0;right:0;bottom:13%;
+    text-align:center;padding:0 28px;
+    font-family:'Cormorant Garamond',Georgia,serif;
+    font-size:clamp(19px,5.4vw,24px);line-height:1.35;font-weight:500;
+    color:var(--ink);opacity:0;transition:opacity 1.1s ease;
+    pointer-events:none;text-shadow:0 1px 0 rgba(255,255,255,.45);
+  }
+  #line.show{opacity:1}
+  #line i{font-style:italic}
+
+  #hint{
+    position:absolute;left:0;right:0;bottom:6%;text-align:center;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);opacity:0;transition:opacity 1s ease;pointer-events:none;
+  }
+  #hint.show{opacity:.85}
+
+  /* ── buttons ── */
+  .btn{
+    font-family:'Inter',sans-serif;font-size:15px;font-weight:500;
+    color:var(--ink);background:var(--card);
+    border:1px solid rgba(50,46,41,.25);border-radius:999px;
+    padding:13px 26px;cursor:pointer;
+    box-shadow:0 3px 14px rgba(50,46,41,.12);
+    transition:transform .15s ease, box-shadow .15s ease, opacity .6s ease;
+  }
+  .btn:active{transform:scale(.97)}
+  #exitBtn{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:5.5%;
+    opacity:0;pointer-events:none;
+  }
+  #exitBtn.show{opacity:1;pointer-events:auto}
+
+  /* ── overlays ── */
+  .panel{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    justify-content:center;align-items:center;text-align:center;
+    padding:34px 30px;gap:22px;
+    background:linear-gradient(180deg,rgba(251,246,234,.0),rgba(251,246,234,.55) 18%,rgba(251,246,234,.82) 50%,rgba(251,246,234,.55) 82%,rgba(251,246,234,0));
+    opacity:0;pointer-events:none;transition:opacity 1s ease;
+  }
+  .panel.show{opacity:1;pointer-events:auto}
+  .panel h2{
+    font-family:'Cormorant Garamond',Georgia,serif;
+    font-weight:500;font-size:clamp(22px,6.4vw,28px);line-height:1.3;
+  }
+  .panel p{font-size:15px;line-height:1.65;color:var(--ink-soft);max-width:330px}
+  .panel .display{
+    font-family:'Cormorant Garamond',Georgia,serif;
+    font-size:clamp(20px,5.8vw,26px);line-height:1.45;font-weight:400;max-width:340px;
+  }
+
+  /* ── ponema choices ── */
+  #choices{display:flex;flex-direction:column;gap:11px;width:100%;max-width:330px}
+  .choice{
+    font-family:'Cormorant Garamond',Georgia,serif;
+    font-size:18px;line-height:1.3;color:var(--ink);
+    background:rgba(251,246,234,.92);
+    border:1px solid rgba(50,46,41,.2);border-radius:16px;
+    padding:15px 18px;cursor:pointer;text-align:left;
+    transition:transform .12s ease, border-color .2s ease;
+  }
+  .choice:active{transform:scale(.985)}
+  .choice small{
+    display:block;font-family:'Inter',sans-serif;font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:3px;
+  }
+
+  #footerTag{
+    position:absolute;left:0;right:0;bottom:12px;text-align:center;
+    font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:rgba(50,46,41,.45);pointer-events:none;
+    opacity:0;transition:opacity 1.4s ease;
+  }
+  #footerTag.show{opacity:1}
+
+  @media (prefers-reduced-motion: reduce){
+    #line,#hint,.panel{transition:none}
+  }
+</style>
+</head>
+<body>
+<div id="phone">
+  <canvas id="cv"></canvas>
+
+  <div id="line"></div>
+  <div id="hint">коснись в ритме движения</div>
+  <button class="btn" id="exitBtn">Выйти из лодочки</button>
+
+  <!-- reveal -->
+  <div class="panel" id="revealPanel">
+    <h2>Это была не просто лодочка</h2>
+    <p class="display">То, что ты сейчас делал руками,<br>твоё понимание делает каждый день.</p>
+    <p>Между двумя полюсами — <b>непониманием</b> и <b>результатом</b> — качается живой процесс. Большая амплитуда вырастает не из силы, а из уважения к мизерным откликам.</p>
+    <button class="btn" id="toPonema">Дальше</button>
+  </div>
+
+  <!-- ponema -->
+  <div class="panel" id="ponemaPanel">
+    <h2>Первая пометка</h2>
+    <p>Что сейчас с твоим пониманием — самой лодочки?<br>Здесь нет правильного ответа. Судья — ты.</p>
+    <div id="choices">
+      <button class="choice" data-v="0"><small>понема I</small>Что-то есть, но не складывается</button>
+      <button class="choice" data-v="1"><small>понема II</small>Появился доступ</button>
+      <button class="choice" data-v="2"><small>понема III</small>Суть проявляется</button>
+      <button class="choice" data-v="3"><small>понема IV</small>Оставило след</button>
+    </div>
+  </div>
+
+  <!-- cloud finale -->
+  <div class="panel" id="cloudPanel">
+    <h2 id="cloudTitle"></h2>
+    <p class="display" id="cloudText"></p>
+    <p id="cloudCoda">Это был первый такт.<br>Завтра лодочка качнётся выше.</p>
+  </div>
+
+  <div id="footerTag">Лодочка понимания · прототип · AlfaGravity — 20 лет полёта</div>
+</div>
+
+<script>
+(()=>{ 
+"use strict";
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const phone=document.getElementById('phone');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=phone.clientWidth; H=phone.clientHeight;
+  cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize',resize); resize();
+
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ───────────────── state ───────────────── */
+const S={
+  phase:'swing',          // swing | reveal | ponema | cloud
+  th:0, om:0,             // angle, angular velocity
+  A:0,                    // smoothed amplitude
+  wind:0,                 // 0..1, born from amplitude
+  t:0, sustain:0,
+  milestones:{m1:false,m2:false,m3:false,m4:false,exit:false},
+  taps:0, lastGood:0,
+  cloudVariant:0, cloudT:0,
+  settle:false,
+};
+const PIV_Y=()=>H*0.215, ROPE=()=>H*0.40;   // pivot height, rope length
+const G=2.6, DAMP=0.0022;
+
+/* ───────────────── narrative ───────────────── */
+const lineEl=document.getElementById('line'),hintEl=document.getElementById('hint');
+let lineTimer=null;
+function say(html,hold=4200){
+  lineEl.innerHTML=html; lineEl.classList.add('show');
+  clearTimeout(lineTimer);
+  lineTimer=setTimeout(()=>lineEl.classList.remove('show'),hold);
+}
+setTimeout(()=>say('Жаркий день. Ветра нет.<br>Старая лодочка ждёт.',3800),700);
+setTimeout(()=>{ if(S.taps===0){ say('Качай. <i>Не силой — ритмом.</i>',4200); hintEl.classList.add('show');} },4900);
+
+/* ───────────────── input: pumping ───────────────── */
+const ripples=[];
+function pump(x,y){
+  if(S.phase!=='swing')return;
+  S.taps++; hintEl.classList.remove('show');
+  const a=Math.abs(S.th), Aref=Math.max(S.A,0.12);
+  if(Math.abs(S.om)<0.04 && a<0.05){          // first nudges from stillness
+    S.om += (S.taps%2? .085 : -.085);
+    good(x,y); return;
+  }
+  if(a < Aref*0.55){                           // near the bottom: in-phase push works
+    const eff = 0.105 * (1 - a/(Aref+0.12)) * (S.A>1.0? 0.45 : 1); // predел: дальше — не сильнее
+    S.om += Math.sign(S.om||1)*eff;
+    good(x,y);
+  }else{                                       // near pole: too crude, breaks rhythm
+    S.om *= 0.94;
+    ripples.push({x,y,r:4,a:0.5,bad:true});
+  }
+}
+function good(x,y){ S.lastGood=S.t; ripples.push({x,y,r:4,a:0.55,bad:false}); }
+phone.addEventListener('pointerdown',e=>{
+  if(S.phase!=='swing')return;
+  if(e.target.closest('button'))return;
+  pump(e.clientX-phone.getBoundingClientRect().left, e.clientY-phone.getBoundingClientRect().top);
+});
+
+/* ───────────────── milestones ───────────────── */
+const exitBtn=document.getElementById('exitBtn');
+function checkMilestones(){
+  const M=S.milestones;
+  if(!M.m1 && S.A>0.07){M.m1=true; say('Лодочка отвечает.<br>Едва заметно — но отвечает.');}
+  if(!M.m2 && S.A>0.30){M.m2=true; say('Появился ветер.<br><i>Это твоё движение его родило.</i>');}
+  if(!M.m3 && S.A>0.62){M.m3=true; say('Чувствуешь замирание вверху?<br>У качания есть полюса.',5200);}
+  if(!M.m4 && S.A>1.02){M.m4=true; say('Дальше — не сильнее.<br><i>Дальше — удержи.</i>',5200);}
+  if(S.A>0.55) S.sustain+=1/60; 
+  if(!M.exit && S.sustain>5.5){M.exit=true; exitBtn.classList.add('show');}
+}
+
+/* ───────────────── phase transitions ───────────────── */
+const panels={
+  reveal:document.getElementById('revealPanel'),
+  ponema:document.getElementById('ponemaPanel'),
+  cloud:document.getElementById('cloudPanel'),
+};
+exitBtn.addEventListener('click',()=>{
+  S.phase='reveal'; S.settle=true;
+  exitBtn.classList.remove('show'); lineEl.classList.remove('show');
+  panels.reveal.classList.add('show');
+});
+document.getElementById('toPonema').addEventListener('click',()=>{
+  panels.reveal.classList.remove('show');
+  S.phase='ponema';
+  setTimeout(()=>panels.ponema.classList.add('show'),350);
+});
+const CLOUD_COPY=[
+ {t:'Не складывается',  d:'Это не ошибка. Это вход в цикл —<br>суть уже проявляется там,<br>где смысл ещё не сложился.'},
+ {t:'Появился доступ',  d:'Содержание приоткрылось.<br>Теперь есть с чем идти дальше.'},
+ {t:'Суть проявляется', d:'Видно, <i>как именно</i> складывается.<br>Это и есть живое движение понимания.'},
+ {t:'Оставило след',    d:'Понятое вошло в жизнь.<br>Цикл завершён — и готов начаться выше.'},
+];
+document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>{
+  S.cloudVariant=+b.dataset.v; S.cloudT=0;
+  panels.ponema.classList.remove('show');
+  S.phase='cloud';
+  const c=CLOUD_COPY[S.cloudVariant];
+  document.getElementById('cloudTitle').textContent=c.t;
+  document.getElementById('cloudText').innerHTML=c.d;
+  setTimeout(()=>{panels.cloud.classList.add('show');
+    document.getElementById('footerTag').classList.add('show');},600);
+}));
+
+/* ───────────────── particles ───────────────── */
+const petals=[];
+function spawnPetal(){
+  petals.push({x:Math.random()*W, y:-10, vx:0.2+Math.random()*0.5, vy:0.35+Math.random()*0.5,
+               r:2+Math.random()*2.4, ph:Math.random()*6.28, life:1});
+}
+
+/* ───────────────── drawing ───────────────── */
+function skyAndPark(windSway){
+  // sky
+  const g=ctx.createLinearGradient(0,0,0,H);
+  if(S.phase==='cloud'){ g.addColorStop(0,'#dceef7'); g.addColorStop(1,'#f9f2e2'); }
+  else{ g.addColorStop(0,'#cfe7f3'); g.addColorStop(0.7,'#ecdfc4'); g.addColorStop(1,'#f6ecd8'); }
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // sun glow
+  const sg=ctx.createRadialGradient(W*0.8,H*0.12,8, W*0.8,H*0.12,W*0.5);
+  sg.addColorStop(0,'rgba(255,217,138,0.85)'); sg.addColorStop(1,'rgba(255,217,138,0)');
+  ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+  if(S.phase==='cloud') return;
+  // canopy corners (leaf blobs), swaying with wind
+  ctx.save();
+  const sway=windSway;
+  canopy(-W*0.06+sway*6, -H*0.02, W*0.44, '#3f5d3a',0.92);
+  canopy(W*0.62+sway*9,  -H*0.04, W*0.5,  '#557a4b',0.85);
+  canopy(W*0.78+sway*12, H*0.06,  W*0.3,  '#7da06b',0.8);
+  ctx.restore();
+  // ground
+  const gg=ctx.createLinearGradient(0,H*0.82,0,H);
+  gg.addColorStop(0,'#d9c79a'); gg.addColorStop(1,'#c4ad7e');
+  ctx.fillStyle=gg; ctx.fillRect(0,H*0.82,W,H*0.18);
+  // path light strip
+  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(0,H*0.84,W,H*0.012);
+}
+function canopy(x,y,s,col,al){
+  ctx.globalAlpha=al; ctx.fillStyle=col;
+  for(let i=0;i<6;i++){
+    ctx.beginPath();
+    ctx.ellipse(x+(i%3)*s*0.22, y+Math.floor(i/3)*s*0.16+ (i%2)*s*0.05, s*0.21,s*0.15, 0,0,6.29);
+    ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function frameAndBoat(){
+  const px=W/2, py=PIV_Y(), L=ROPE();
+  const groundY=H*0.86;
+  // A-frame
+  ctx.lineCap='round';
+  ctx.strokeStyle='#4a4642'; ctx.lineWidth=7;
+  ctx.beginPath();
+  ctx.moveTo(px-W*0.27,groundY); ctx.lineTo(px-W*0.06,py-6);
+  ctx.moveTo(px+W*0.27,groundY); ctx.lineTo(px+W*0.06,py-6);
+  ctx.stroke();
+  ctx.lineWidth=9;
+  ctx.beginPath(); ctx.moveTo(px-W*0.1,py-4); ctx.lineTo(px+W*0.1,py-4); ctx.stroke();
+
+  // boat shadow (on ground)
+  const bx=px+Math.sin(S.th)*L;
+  ctx.fillStyle='rgba(60,50,40,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(bx, groundY+6, 44*(1-Math.abs(S.th)*0.25)+14, 7, 0,0,6.29);
+  ctx.fill();
+
+  // rotating assembly
+  ctx.save();
+  ctx.translate(px,py); ctx.rotate(S.th);
+  // hanger bars
+  ctx.strokeStyle='#5a5550'; ctx.lineWidth=4.5;
+  ctx.beginPath();
+  ctx.moveTo(-26,4); ctx.lineTo(-30,L-26);
+  ctx.moveTo(26,4);  ctx.lineTo(30,L-26);
+  ctx.stroke();
+  // boat body
+  ctx.translate(0,L);
+  const bw=58,bh=26;
+  const wood=ctx.createLinearGradient(0,-bh,0,bh*0.4);
+  wood.addColorStop(0,'#9c6a3e'); wood.addColorStop(1,'#774c2a');
+  ctx.fillStyle=wood;
+  ctx.beginPath();
+  ctx.moveTo(-bw,-bh*0.55);
+  ctx.quadraticCurveTo(-bw*1.18,2, -bw*0.62,bh*0.55);
+  ctx.lineTo(bw*0.62,bh*0.55);
+  ctx.quadraticCurveTo(bw*1.18,2, bw,-bh*0.55);
+  ctx.quadraticCurveTo(0,-bh*0.18, -bw,-bh*0.55);
+  ctx.fill();
+  // slats
+  ctx.strokeStyle='rgba(50,32,18,0.5)'; ctx.lineWidth=1.4;
+  for(let i=-2;i<=2;i++){
+    ctx.beginPath(); ctx.moveTo(i*bw*0.36,-bh*0.34); ctx.lineTo(i*bw*0.33,bh*0.5); ctx.stroke();
+  }
+  // rim highlight
+  ctx.strokeStyle='rgba(255,235,200,0.55)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(-bw,-bh*0.55); ctx.quadraticCurveTo(0,-bh*0.18,bw,-bh*0.55); ctx.stroke();
+  ctx.restore();
+}
+function poleLabels(){
+  if(S.A<0.5 || S.phase!=='swing') return;
+  const px=W/2, py=PIV_Y(), L=ROPE();
+  const alpha=Math.min((S.A-0.5)/0.25,1)*0.8;
+  ctx.font='12px Inter, sans-serif';
+  ctx.textAlign='center';
+  const lab=(ang,text)=>{
+    const x=px+Math.sin(ang)*L*1.12, y=py+Math.cos(ang)*L*1.12;
+    ctx.fillStyle=`rgba(50,46,41,${alpha})`;
+    ctx.save(); ctx.translate(x,y);
+    text.split('\n').forEach((t,i)=>ctx.fillText(t,0,i*14));
+    ctx.restore();
+  };
+  const a=Math.min(S.A,1.1)*0.92;
+  lab(-a,'полюс\nнепонимания');
+  lab(a,'полюс\nрезультата');
+  ctx.fillStyle=`rgba(50,46,41,${alpha*0.75})`;
+  ctx.fillText('— процесс понимания —', px, py+L*1.22);
+}
+function drawRipples(){
+  for(let i=ripples.length-1;i>=0;i--){
+    const r=ripples[i];
+    r.r+=1.6; r.a-=0.018;
+    if(r.a<=0){ripples.splice(i,1);continue;}
+    ctx.strokeStyle=r.bad?`rgba(150,90,60,${r.a})`:`rgba(255,255,255,${r.a})`;
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,6.29); ctx.stroke();
+  }
+}
+function drawPetals(){
+  const windX=S.wind*1.4;
+  if(S.wind>0.15 && Math.random()<S.wind*(reduceMotion?0.02:0.08)) spawnPetal();
+  for(let i=petals.length-1;i>=0;i--){
+    const p=petals[i];
+    p.ph+=0.05; p.x+=p.vx+windX+Math.sin(p.ph)*0.4; p.y+=p.vy;
+    if(p.y>H*0.88||p.x>W+20){petals.splice(i,1);continue;}
+    ctx.fillStyle='rgba(255,243,201,0.9)';
+    ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r,p.r*0.62,p.ph,0,6.29); ctx.fill();
+  }
+  // breeze streaks
+  if(S.wind>0.4 && !reduceMotion){
+    ctx.strokeStyle=`rgba(255,255,255,${0.12*S.wind})`; ctx.lineWidth=1.5;
+    for(let i=0;i<3;i++){
+      const y=H*(0.3+0.18*i)+Math.sin(S.t*0.8+i)*8;
+      const x=( (S.t*60*(1+i*0.3)) % (W+160) )-80;
+      ctx.beginPath(); ctx.moveTo(x,y);
+      ctx.quadraticCurveTo(x+40,y-6,x+85,y); ctx.stroke();
+    }
+  }
+}
+/* ── cloud finale rendering ── */
+function drawCloud(){
+  S.cloudT+=1/60;
+  const t=Math.min(S.cloudT/1.6,1), e=1-Math.pow(1-t,3);
+  const cx=W/2, cy=H*0.34, v=S.cloudVariant;
+  ctx.save();
+  ctx.globalAlpha=e;
+  const puff=(dx,dy,r,blur,col)=>{
+    ctx.save();
+    ctx.filter = blur?`blur(${blur}px)`:'none';
+    ctx.fillStyle=col;
+    ctx.beginPath(); ctx.arc(cx+dx,cy+dy,r,0,6.29); ctx.fill();
+    ctx.restore();
+  };
+  if(v===0){ // не складывается: расплывчатые клочья, дрейфуют
+    const d=Math.sin(S.cloudT*0.7)*8;
+    puff(-70+d,-4,34,9,'rgba(255,255,255,0.55)');
+    puff(-6-d,-22,42,11,'rgba(255,255,255,0.5)');
+    puff(58+d*0.6,6,30,10,'rgba(255,255,255,0.5)');
+    puff(16,28,26,12,'rgba(255,255,255,0.42)');
+  }else if(v===1){ // доступ: облако с открывшимся просветом
+    puff(-52,2,40,4,'rgba(255,255,255,0.85)');
+    puff(54,0,40,4,'rgba(255,255,255,0.85)');
+    puff(0,-30,46,4,'rgba(255,255,255,0.88)');
+    const lg=ctx.createRadialGradient(cx,cy+6,2,cx,cy+6,46);
+    lg.addColorStop(0,'rgba(255,224,150,0.95)'); lg.addColorStop(1,'rgba(255,224,150,0)');
+    ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(cx,cy+6,46,0,6.29); ctx.fill();
+  }else if(v===2){ // суть проявляется: облако обретает контур
+    puff(-50,4,38,2,'rgba(255,255,255,0.95)');
+    puff(50,2,38,2,'rgba(255,255,255,0.95)');
+    puff(0,-26,46,2,'rgba(255,255,255,0.97)');
+    puff(0,16,52,2,'rgba(255,255,255,0.95)');
+    ctx.strokeStyle=`rgba(120,110,95,${0.5*e})`; ctx.lineWidth=1.6;
+    ctx.beginPath();
+    ctx.arc(cx-50,cy+4,38,Math.PI*0.45,Math.PI*1.5);
+    ctx.arc(cx,cy-26,46,Math.PI*0.95,Math.PI*2.02);
+    ctx.arc(cx+50,cy+2,38,Math.PI*1.5,Math.PI*0.6);
+    ctx.stroke();
+  }else{ // оставило след: дождь и росток
+    puff(-46,0,36,3,'rgba(225,228,235,0.95)');
+    puff(46,-2,36,3,'rgba(225,228,235,0.95)');
+    puff(0,-24,44,3,'rgba(230,233,240,0.97)');
+    ctx.strokeStyle=`rgba(140,170,205,${0.8*e})`; ctx.lineWidth=2;
+    for(let i=-3;i<=3;i++){
+      const x=cx+i*22, y0=cy+40, len=26+(i%2)*10, fall=(S.cloudT*140+i*37)%90;
+      ctx.globalAlpha=e*0.8;
+      ctx.beginPath(); ctx.moveTo(x,y0+fall); ctx.lineTo(x-3,y0+fall+len*0.4); ctx.stroke();
+    }
+    ctx.globalAlpha=e;
+    // sprout
+    const gy=cy+150;
+    ctx.strokeStyle='#5d7c4a'; ctx.lineWidth=3; ctx.lineCap='round';
+    const grow=Math.min(Math.max(S.cloudT-0.8,0)/1.4,1);
+    ctx.beginPath(); ctx.moveTo(cx,gy); ctx.lineTo(cx,gy-26*grow); ctx.stroke();
+    if(grow>0.5){
+      ctx.fillStyle='#7da06b';
+      ctx.beginPath(); ctx.ellipse(cx-8,gy-26*grow,9*grow,4.5*grow,-0.5,0,6.29); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx+8,gy-26*grow,9*grow,4.5*grow,0.5,0,6.29); ctx.fill();
+    }
+    ctx.fillStyle='rgba(93,124,74,0.25)';
+    ctx.fillRect(0,gy+4,W,2);
+  }
+  ctx.restore();
+}
+
+/* ───────────────── main loop ───────────────── */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min((now-last)/1000,0.033); last=now; S.t+=dt;
+
+  // physics
+  if(S.phase==='cloud'){
+    // freeze park scene
+  }else{
+    const damp = S.settle? 0.012 : DAMP;
+    S.om += -G*Math.sin(S.th)*dt - S.om*damp;
+    S.th += S.om;
+    const inst=Math.abs(S.th);
+    S.A = Math.max(S.A*0.9985, inst);
+    if(S.settle) S.A*=0.997;
+    S.wind += ((Math.min(S.A/0.7,1)) - S.wind)*0.01;
+    if(S.phase==='swing') checkMilestones();
+  }
+
+  // draw
+  const sway=Math.sin(S.t*0.9)*S.wind;
+  skyAndPark(sway);
+  if(S.phase==='cloud'){ drawCloud(); }
+  else{
+    frameAndBoat();
+    poleLabels();
+    drawPetals();
+    drawRipples();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
