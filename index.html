@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Лодочка понимания · прототип первой минуты</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&family=Figtree:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
   :root{
     --sky-top:#cfe7f3; --sky-warm:#f6ecd8;
@@ -33,10 +33,12 @@
 
   /* ── narrative line ── */
   #line{
-    position:absolute;left:0;right:0;bottom:13%;
-    text-align:center;padding:0 28px;
-    font-family:'Cormorant Garamond',Georgia,serif;
-    font-size:clamp(19px,5.4vw,24px);line-height:1.35;font-weight:500;
+    position:absolute;left:0;right:0;
+    top:13%; height:45%;                 /* зона текста: от ~13% до ~58% (над перекладиной) */
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:0 8%;
+    font-family:'Figtree',sans-serif;
+    font-size:28px;line-height:1.4;font-weight:500;
     color:var(--ink);opacity:0;transition:opacity 1.1s ease;
     pointer-events:none;text-shadow:0 1px 0 rgba(255,255,255,.45);
   }
@@ -109,6 +111,7 @@
   }
   #footerTag.show{opacity:1}
 
+
   @media (prefers-reduced-motion: reduce){
     #line,#hint,.panel{transition:none}
   }
@@ -178,9 +181,16 @@ const S={
   taps:0, lastGood:0,
   cloudVariant:0, cloudT:0,
   settle:false,
+  procDir:1,        // 1 = летим вправо (к пониманию), -1 = влево (к непониманию)
+  procFade:1,       // прозрачность слова при перетёке (0..1)
+  procPrevOm:0,     // прошлая угл. скорость — чтобы ловить разворот у полюса
 };
-const PIV_Y=()=>H*0.215, ROPE=()=>H*0.40;   // pivot height, rope length
-const G=2.6, DAMP=0.0022;
+const PIV_Y=()=>H*0.60;                          // перекладина в нижней трети — вся конструкция сдвинута ниже
+const ROPE=()=>Math.min(W*0.36, H*0.30);         // длина подвеса < полуширины: при размахе лодочка остаётся в кадре
+// G — «длина/тяжесть» маятника. Меньше → медленнее и величавее ход. Дворовая лодочка тяжёлая, разгоняется долго.
+const G=0.42, DAMP=0.0011;
+// HOLD — удержание у полюсов: наверху лодочка ощутимо замирает (полюс проживается).
+const HOLD=1.0;
 
 /* ───────────────── narrative ───────────────── */
 const lineEl=document.getElementById('line'),hintEl=document.getElementById('hint');
@@ -199,12 +209,12 @@ function pump(x,y){
   if(S.phase!=='swing')return;
   S.taps++; hintEl.classList.remove('show');
   const a=Math.abs(S.th), Aref=Math.max(S.A,0.12);
-  if(Math.abs(S.om)<0.04 && a<0.05){          // first nudges from stillness
-    S.om += (S.taps%2? .085 : -.085);
+  if(Math.abs(S.om)<0.018 && a<0.05){          // first nudges from stillness
+    S.om += (S.taps%2? .034 : -.034);
     good(x,y); return;
   }
   if(a < Aref*0.55){                           // near the bottom: in-phase push works
-    const eff = 0.105 * (1 - a/(Aref+0.12)) * (S.A>1.0? 0.45 : 1); // predел: дальше — не сильнее
+    const eff = 0.040 * (1 - a/(Aref+0.12)) * (S.A>1.35? 0.25 : 1); // predел ~80°: дальше — не сильнее
     S.om += Math.sign(S.om||1)*eff;
     good(x,y);
   }else{                                       // near pole: too crude, breaks rhythm
@@ -223,11 +233,11 @@ phone.addEventListener('pointerdown',e=>{
 const exitBtn=document.getElementById('exitBtn');
 function checkMilestones(){
   const M=S.milestones;
-  if(!M.m1 && S.A>0.07){M.m1=true; say('Лодочка отвечает.<br>Едва заметно — но отвечает.');}
-  if(!M.m2 && S.A>0.30){M.m2=true; say('Появился ветер.<br><i>Это твоё движение его родило.</i>');}
-  if(!M.m3 && S.A>0.62){M.m3=true; say('Чувствуешь замирание вверху?<br>У качания есть полюса.',5200);}
-  if(!M.m4 && S.A>1.02){M.m4=true; say('Дальше — не сильнее.<br><i>Дальше — удержи.</i>',5200);}
-  if(S.A>0.55) S.sustain+=1/60; 
+  if(!M.m1 && S.A>0.04){M.m1=true; say('Лодочка отвечает.<br>Едва заметно — но отвечает.');}
+  if(!M.m2 && S.A>0.40){M.m2=true; say('Появился ветер.<br><i>Это твоё движение его родило.</i>');}
+  if(!M.m3 && S.A>0.85){M.m3=true; say('Чувствуешь замирание вверху?<br>У качания есть полюса.',5200);}
+  if(!M.m4 && S.A>1.30){M.m4=true; say('Дальше — не сильнее.<br><i>Дальше — удержи.</i>',5200);}
+  if(S.A>0.70) S.sustain+=1/60; 
   if(!M.exit && S.sustain>5.5){M.exit=true; exitBtn.classList.add('show');}
 }
 
@@ -291,11 +301,12 @@ function skyAndPark(windSway){
   canopy(W*0.78+sway*12, H*0.06,  W*0.3,  '#7da06b',0.8);
   ctx.restore();
   // ground
-  const gg=ctx.createLinearGradient(0,H*0.82,0,H);
+  const gY=H*0.92;
+  const gg=ctx.createLinearGradient(0,gY,0,H);
   gg.addColorStop(0,'#d9c79a'); gg.addColorStop(1,'#c4ad7e');
-  ctx.fillStyle=gg; ctx.fillRect(0,H*0.82,W,H*0.18);
+  ctx.fillStyle=gg; ctx.fillRect(0,gY,W,H-gY);
   // path light strip
-  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(0,H*0.84,W,H*0.012);
+  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(0,gY+H*0.02,W,H*0.012);
 }
 function canopy(x,y,s,col,al){
   ctx.globalAlpha=al; ctx.fillStyle=col;
@@ -308,16 +319,16 @@ function canopy(x,y,s,col,al){
 }
 function frameAndBoat(){
   const px=W/2, py=PIV_Y(), L=ROPE();
-  const groundY=H*0.86;
-  // A-frame
+  const groundY=H*0.92;                            // земля у низа кадра — вся конструкция стоит на ней, сдвинута вниз
+  // A-frame — приземистая дворовая рама, ноги стоят на земле. Вся конструкция опущена (см. PIV_Y).
   ctx.lineCap='round';
   ctx.strokeStyle='#4a4642'; ctx.lineWidth=7;
   ctx.beginPath();
-  ctx.moveTo(px-W*0.27,groundY); ctx.lineTo(px-W*0.06,py-6);
-  ctx.moveTo(px+W*0.27,groundY); ctx.lineTo(px+W*0.06,py-6);
+  ctx.moveTo(px-W*0.32,groundY); ctx.lineTo(px-W*0.05,py-6);
+  ctx.moveTo(px+W*0.32,groundY); ctx.lineTo(px+W*0.05,py-6);
   ctx.stroke();
   ctx.lineWidth=9;
-  ctx.beginPath(); ctx.moveTo(px-W*0.1,py-4); ctx.lineTo(px+W*0.1,py-4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px-W*0.09,py-4); ctx.lineTo(px+W*0.09,py-4); ctx.stroke();
 
   // boat shadow (on ground)
   const bx=px+Math.sin(S.th)*L;
@@ -337,7 +348,7 @@ function frameAndBoat(){
   ctx.stroke();
   // boat body
   ctx.translate(0,L);
-  const bw=58,bh=26;
+  const bw=46,bh=21;
   const wood=ctx.createLinearGradient(0,-bh,0,bh*0.4);
   wood.addColorStop(0,'#9c6a3e'); wood.addColorStop(1,'#774c2a');
   ctx.fillStyle=wood;
@@ -362,7 +373,7 @@ function poleLabels(){
   if(S.A<0.5 || S.phase!=='swing') return;
   const px=W/2, py=PIV_Y(), L=ROPE();
   const alpha=Math.min((S.A-0.5)/0.25,1)*0.8;
-  ctx.font='12px Inter, sans-serif';
+  ctx.font='12px Figtree, Inter, sans-serif';
   ctx.textAlign='center';
   const lab=(ang,text)=>{
     const x=px+Math.sin(ang)*L*1.12, y=py+Math.cos(ang)*L*1.12;
@@ -372,10 +383,16 @@ function poleLabels(){
     ctx.restore();
   };
   const a=Math.min(S.A,1.1)*0.92;
-  lab(-a,'полюс\nнепонимания');
-  lab(a,'полюс\nрезультата');
+  // полюса — результаты (лодочка там замирает)
+  lab(-a,'результат\nнепонимания');
+  lab(a,'результат\nпонимания');
+  // дуга — процесс. «процесс» статично, второе слово меняется по направлению хода, с перетёком.
+  const baseY=py+L*1.20;
   ctx.fillStyle=`rgba(50,46,41,${alpha*0.75})`;
-  ctx.fillText('— процесс понимания —', px, py+L*1.22);
+  ctx.fillText('процесс', px, baseY);
+  const word = S.procDir>0 ? 'понимания  →' : '←  непонимания';
+  ctx.fillStyle=`rgba(50,46,41,${alpha*0.75*S.procFade})`;
+  ctx.fillText(word, px, baseY+16);
 }
 function drawRipples(){
   for(let i=ripples.length-1;i>=0;i--){
@@ -482,13 +499,25 @@ function loop(now){
   if(S.phase==='cloud'){
     // freeze park scene
   }else{
-    const damp = S.settle? 0.012 : DAMP;
+    const damp = S.settle? 0.010 : DAMP;
     S.om += -G*Math.sin(S.th)*dt - S.om*damp;
+    // удержание у полюсов: у верхней точки (большой угол + малая скорость) лодочка ощутимо замирает
+    const aNow=Math.abs(S.th), Apk=Math.max(S.A,0.05);
+    if(aNow > Apk*0.80 && Math.abs(S.om) < 0.009){
+      S.om *= (1 - HOLD*0.10);   // придерживает на самом верху — полюс проживается
+    }
     S.th += S.om;
+    // направление подписи = куда лодочка реально движется СЕЙЧАС.
+    // boat_x = px + sin(th)*L; th += om → om>0 двигает вправо (к результату понимания).
+    if(Math.abs(S.om) > 0.004){               // пока есть заметный ход
+      const dir = S.om>0 ? -1 : 1;
+      if(dir!==S.procDir){ S.procDir=dir; S.procFade=0; }  // сменилось направление → перетёк
+    }
+    if(S.procFade<1) S.procFade=Math.min(1,S.procFade+dt*2.2);
     const inst=Math.abs(S.th);
-    S.A = Math.max(S.A*0.9985, inst);
+    S.A = Math.max(S.A*0.9988, inst);
     if(S.settle) S.A*=0.997;
-    S.wind += ((Math.min(S.A/0.7,1)) - S.wind)*0.01;
+    S.wind += ((Math.min(S.A/0.9,1)) - S.wind)*0.01;
     if(S.phase==='swing') checkMilestones();
   }
 
