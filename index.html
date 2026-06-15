@@ -237,9 +237,9 @@ function runIntro(){
   const t2 = 700 + 3*2000 + 2500;        // старт второго экрана
   setTimeout(()=>{ if(S.taps===0) say('Играй с ритмом.', 99999, true); }, t2);
   setTimeout(()=>{ if(S.taps===0) showLine('Играй с ритмом.<br>Одна сила не поможет', 99999, true); }, t2+3000);
-  setTimeout(()=>{ if(S.taps===0) showLine('Играй с ритмом.<br>Одна сила не поможет<br>раскачать лодочку.', 99999, true); }, t2+6000);
+  setTimeout(()=>{ if(S.taps===0) showLine('Играй с ритмом.<br>Одна сила не поможет<br>раскачать лодочку.', 99999, true); }, t2+4500);
   // все три строки висят ~5с, затем уходят
-  setTimeout(()=>{ if(S.taps===0) lineEl.classList.remove('show'); }, t2+6000+5000);
+  setTimeout(()=>{ if(S.taps===0) lineEl.classList.remove('show'); }, t2+4500+5000);
   // затем подсказка внизу
   setTimeout(()=>{
     if(S.taps===0){
@@ -247,7 +247,7 @@ function runIntro(){
       // если 2с без касания — подсказка начинает дышать (растёт вдвое и обратно, циклом)
       setTimeout(()=>{ if(S.taps===0) hintEl.classList.add('breathe'); }, 2000);
     }
-  }, t2+6000+5000+1400);
+  }, t2+4500+5000+1400);
 }
 runIntro();
 
